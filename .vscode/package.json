@@ -1,0 +1,147 @@
+{
+  "name": "salesforce-monitoring",
+  "displayName": "Salesforce Monitoring System",
+  "description": "Comprehensive Salesforce monitoring and analysis tools",
+  "version": "1.0.0",
+  "publisher": "salesforce-monitoring",
+  "engines": {
+    "vscode": "^1.60.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:salesforce.analyzeCurrentFile",
+    "onCommand:salesforce.runFullAnalysis",
+    "onCommand:salesforce.generateReport",
+    "onCommand:salesforce.analyzeGovernorLimits",
+    "onCommand:salesforce.analyzePerformance",
+    "onCommand:salesforce.analyzeCodeQuality",
+    "onCommand:salesforce.showDashboard",
+    "onCommand:salesforce.fixAllIssues"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "salesforce.analyzeCurrentFile",
+        "title": "Salesforce: Analyze Current File",
+        "category": "Salesforce"
+      },
+      {
+        "command": "salesforce.runFullAnalysis",
+        "title": "Salesforce: Run Full Analysis",
+        "category": "Salesforce"
+      },
+      {
+        "command": "salesforce.generateReport",
+        "title": "Salesforce: Generate Report",
+        "category": "Salesforce"
+      },
+      {
+        "command": "salesforce.analyzeGovernorLimits",
+        "title": "Salesforce: Analyze Governor Limits",
+        "category": "Salesforce"
+      },
+      {
+        "command": "salesforce.analyzePerformance",
+        "title": "Salesforce: Analyze Performance",
+        "category": "Salesforce"
+      },
+      {
+        "command": "salesforce.analyzeCodeQuality",
+        "title": "Salesforce: Analyze Code Quality",
+        "category": "Salesforce"
+      },
+      {
+        "command": "salesforce.showDashboard",
+        "title": "Salesforce: Show Dashboard",
+        "category": "Salesforce"
+      },
+      {
+        "command": "salesforce.fixAllIssues",
+        "title": "Salesforce: Fix All Issues",
+        "category": "Salesforce"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "salesforce.analyzeCurrentFile",
+        "key": "ctrl+shift+a",
+        "when": "resourceExtname == .cls || resourceExtname == .js || resourceExtname == .html"
+      },
+      {
+        "command": "salesforce.runFullAnalysis",
+        "key": "ctrl+shift+f"
+      },
+      {
+        "command": "salesforce.generateReport",
+        "key": "ctrl+shift+r"
+      },
+      {
+        "command": "salesforce.showDashboard",
+        "key": "ctrl+shift+d"
+      },
+      {
+        "command": "salesforce.fixAllIssues",
+        "key": "ctrl+shift+x",
+        "when": "resourceExtname == .cls || resourceExtname == .js || resourceExtname == .html"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "salesforce.analyzeCurrentFile",
+          "when": "resourceExtname == .cls || resourceExtname == .js || resourceExtname == .html"
+        },
+        {
+          "command": "salesforce.runFullAnalysis"
+        },
+        {
+          "command": "salesforce.generateReport"
+        },
+        {
+          "command": "salesforce.analyzeGovernorLimits"
+        },
+        {
+          "command": "salesforce.analyzePerformance"
+        },
+        {
+          "command": "salesforce.analyzeCodeQuality"
+        },
+        {
+          "command": "salesforce.showDashboard"
+        },
+        {
+          "command": "salesforce.fixAllIssues"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "salesforce.analyzeCurrentFile",
+          "when": "resourceExtname == .cls || resourceExtname == .js || resourceExtname == .html",
+          "group": "salesforce"
+        },
+        {
+          "command": "salesforce.fixAllIssues",
+          "when": "resourceExtname == .cls || resourceExtname == .js || resourceExtname == .html",
+          "group": "salesforce"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "salesforce.runFullAnalysis",
+          "group": "salesforce"
+        },
+        {
+          "command": "salesforce.generateReport",
+          "group": "salesforce"
+        },
+        {
+          "command": "salesforce.showDashboard",
+          "group": "salesforce"
+        }
+      ]
+    }
+  }
+} 

@@ -1,0 +1,43 @@
+# Node modules
+node_modules/
+
+# Build outputs
+build/
+dist/
+out/
+
+# Coverage reports
+coverage/
+.nyc_output/
+
+# Generated files
+*.min.js
+*.bundle.js
+
+# Salesforce specific
+force-app/main/default/staticresources/
+force-app/main/default/sites/
+force-app/main/default/siteDotComSites/
+
+# Test files (optional - uncomment if you want to exclude tests)
+# **/*.test.js
+# **/*.spec.js
+
+# Configuration files
+*.config.js
+*.config.json
+
+# Documentation
+docs/
+
+# Reports
+reports/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+
+# OS generated files
+.DS_Store
+Thumbs.db 

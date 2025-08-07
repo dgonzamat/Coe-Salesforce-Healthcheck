@@ -1,0 +1,50 @@
+{
+  "name": "salesforce-monitoring-system",
+  "version": "1.0.0",
+  "description": "A comprehensive Salesforce monitoring system using free tools to analyze governor limits, performance, and code quality",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "concurrently \"npm run api:start\" \"cd frontend && npm start\"",
+    "api:start": "node server.js",
+    "build": "cd frontend && npm run build",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
+  },
+  "keywords": [
+    "salesforce",
+    "monitoring",
+    "governor-limits",
+    "code-quality",
+    "performance",
+    "apex",
+    "lwc",
+    "pmd",
+    "eslint"
+  ],
+  "author": "Salesforce Monitoring Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/salesforce-monitoring-system.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-org/salesforce-monitoring-system/issues"
+  },
+  "homepage": "https://github.com/your-org/salesforce-monitoring-system#readme",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "node-fetch": "^2.7.0"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.0",
+    "eslint": "^8.40.0"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
+  "preferGlobal": false,
+  "private": true
+}
