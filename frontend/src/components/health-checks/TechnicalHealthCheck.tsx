@@ -158,6 +158,41 @@ export const TechnicalHealthCheck: React.FC<TechnicalHealthCheckProps> = ({
 };
 
 const TechnicalHealthCheckContent: React.FC<{ data: TechnicalData }> = ({ data }) => {
+  // Validar y proporcionar valores por defecto para governorLimits
+  const governorLimits = data?.governorLimits || {};
+  const defaultLimit = { used: 0, limit: 100000, percentage: 0 };
+  
+  const limits = {
+    soqlQueries: governorLimits.soqlQueries || defaultLimit,
+    dmlStatements: governorLimits.dmlStatements || defaultLimit,
+    cpuTime: governorLimits.cpuTime || defaultLimit,
+    heapSize: governorLimits.heapSize || defaultLimit
+  };
+
+  // Validar y proporcionar valores por defecto para codeQuality
+  const codeQuality = data?.codeQuality || {};
+  const defaultCodeQuality = {
+    totalClasses: 0,
+    largeClasses: 0,
+    legacyCode: 0,
+    multiTriggers: 0,
+    testCoverage: { overallCoverage: 0, classesWithoutCoverage: [], slowTests: [] },
+    complexityScore: 0
+  };
+
+  const safeCodeQuality = {
+    totalClasses: codeQuality.totalClasses || 0,
+    largeClasses: codeQuality.largeClasses || 0,
+    legacyCode: codeQuality.legacyCode || 0,
+    multiTriggers: codeQuality.multiTriggers || 0,
+    testCoverage: {
+      overallCoverage: codeQuality.testCoverage?.overallCoverage || 0,
+      classesWithoutCoverage: codeQuality.testCoverage?.classesWithoutCoverage || [],
+      slowTests: codeQuality.testCoverage?.slowTests || []
+    },
+    complexityScore: codeQuality.complexityScore || 0
+  };
+
   return (
     <Grid container spacing={3}>
       {/* Governor Limits */}
@@ -177,8 +212,8 @@ const TechnicalHealthCheckContent: React.FC<{ data: TechnicalData }> = ({ data }
             </Box>
             <Divider sx={{ mb: 2 }} />
             
-            {Object.entries(data.governorLimits).map(([key, limitData]) => {
-              const risk = getRiskLevel(limitData.percentage);
+            {Object.entries(limits).map(([key, limitData]) => {
+              const risk = getRiskLevel(limitData.percentage || 0);
               const description = getLimitDescription(key);
               return (
                 <Box key={key} sx={{ mb: 3 }}>
@@ -201,13 +236,13 @@ const TechnicalHealthCheckContent: React.FC<{ data: TechnicalData }> = ({ data }
                   </Box>
                   <LinearProgress 
                     variant="determinate" 
-                    value={limitData.percentage} 
+                    value={limitData.percentage || 0} 
                     color={risk.color}
                     sx={{ height: 8, borderRadius: 4, mb: 1 }}
                   />
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Typography variant="caption" color="text.secondary">
-                      {limitData.used.toLocaleString()} / {limitData.limit.toLocaleString()} ({limitData.percentage.toFixed(1)}%)
+                      {(limitData.used || 0).toLocaleString()} / {(limitData.limit || 100000).toLocaleString()} ({(limitData.percentage || 0).toFixed(1)}%)
                     </Typography>
                     <Typography variant="caption" color={risk.color}>
                       {risk.description}
@@ -242,7 +277,7 @@ const TechnicalHealthCheckContent: React.FC<{ data: TechnicalData }> = ({ data }
                 <Tooltip title="Total de clases Apex en la org. Un número alto puede indicar complejidad innecesaria.">
                   <Box>
                     <Typography variant="body2" color="text.secondary">Clases Apex</Typography>
-                    <Typography variant="h6">{data.codeQuality.totalClasses.toLocaleString()}</Typography>
+                    <Typography variant="h6">{safeCodeQuality.totalClasses.toLocaleString()}</Typography>
                   </Box>
                 </Tooltip>
               </Grid>
@@ -250,8 +285,8 @@ const TechnicalHealthCheckContent: React.FC<{ data: TechnicalData }> = ({ data }
                 <Tooltip title="Porcentaje de código cubierto por pruebas. Salesforce requiere mínimo 75% para despliegues.">
                   <Box>
                     <Typography variant="body2" color="text.secondary">Cobertura de Pruebas</Typography>
-                    <Typography variant="h6" color={data.codeQuality.testCoverage.overallCoverage < 75 ? 'error' : 'success'}>
-                      {data.codeQuality.testCoverage.overallCoverage}%
+                    <Typography variant="h6" color={safeCodeQuality.testCoverage.overallCoverage < 75 ? 'error' : 'success'}>
+                      {safeCodeQuality.testCoverage.overallCoverage}%
                     </Typography>
                   </Box>
                 </Tooltip>
@@ -260,7 +295,7 @@ const TechnicalHealthCheckContent: React.FC<{ data: TechnicalData }> = ({ data }
                 <Tooltip title="Clases con más de 2000 líneas. Indican código que necesita refactorización.">
                   <Box>
                     <Typography variant="body2" color="text.secondary">Clases Grandes</Typography>
-                    <Typography variant="h6" color="warning.main">{data.codeQuality.largeClasses}</Typography>
+                    <Typography variant="h6" color="warning.main">{safeCodeQuality.largeClasses}</Typography>
                   </Box>
                 </Tooltip>
               </Grid>
@@ -268,7 +303,7 @@ const TechnicalHealthCheckContent: React.FC<{ data: TechnicalData }> = ({ data }
                 <Tooltip title="Código con más de 5000 líneas o API version antigua. Requiere modernización urgente.">
                   <Box>
                     <Typography variant="body2" color="text.secondary">Código Legacy</Typography>
-                    <Typography variant="h6" color="error.main">{data.codeQuality.legacyCode}</Typography>
+                    <Typography variant="h6" color="error.main">{safeCodeQuality.legacyCode}</Typography>
                   </Box>
                 </Tooltip>
               </Grid>
@@ -276,7 +311,7 @@ const TechnicalHealthCheckContent: React.FC<{ data: TechnicalData }> = ({ data }
             
             <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
               <Typography variant="body2" color="text.secondary">
-                <strong>Score de Complejidad:</strong> {data.codeQuality.complexityScore.toLocaleString()}
+                <strong>Score de Complejidad:</strong> {safeCodeQuality.complexityScore.toLocaleString()}
               </Typography>
               <Typography variant="caption" color="text.secondary">
                 Valores altos indican código complejo que requiere refactorización
