@@ -1,6 +1,18 @@
 // Salesforce Service - Conecta a través del servidor
 import { SalesforceCredentials, SalesforceConnection } from '../types/salesforce';
-import { AnalysisScope } from '../types/analysis';
+
+// Definir AnalysisScope localmente ya que no está en types/analysis
+interface AnalysisScope {
+  codeQuality: boolean;
+  governorLimits: boolean;
+  performance: boolean;
+  testCoverage: boolean;
+  licensing: boolean;
+  userAdoption: boolean;
+  technicalDebt: boolean;
+  security: boolean;
+  maintenance: boolean;
+}
 
 interface ApiResponse<T> {
   success: boolean;

@@ -1,9 +1,48 @@
-const { makeSalesforceRequest } = require('../utils/salesforceClient');
+const {
+  makeSalesforceRequest,
+  makeToolingRequest,
+} = require('../utils/salesforceClient');
 const ScoreCalculator = require('../utils/scoreCalculator');
 
 class TechnicalAnalysisService {
   constructor(salesforceConfig) {
     this.salesforceConfig = salesforceConfig;
+    this.orgType = null; // Se establecerá después de detectar el tipo de org
+  }
+
+  // Detectar tipo de org basado en la URL
+  detectOrgType() {
+    const instanceUrl = this.salesforceConfig.instanceUrl;
+
+    // Developer Edition
+    if (
+      instanceUrl.includes('-dev-ed.my.salesforce.com') ||
+      instanceUrl.includes('test.salesforce.com')
+    ) {
+      return 'developer';
+    }
+
+    // Sandbox
+    if (instanceUrl.includes('-sandbox.my.salesforce.com')) {
+      return 'sandbox';
+    }
+
+    // Production
+    return 'production';
+  }
+
+  // Obtener descripción del tipo de org
+  getOrgTypeDescription(orgType) {
+    switch (orgType) {
+      case 'developer':
+        return 'Developer Edition - Datos simulados para demostración';
+      case 'sandbox':
+        return 'Sandbox - Datos de prueba moderados';
+      case 'production':
+        return 'Production - Datos reales de la organización';
+      default:
+        return 'Tipo de organización desconocido';
+    }
   }
 
   async getCodeQualityAnalysis() {
@@ -47,6 +86,9 @@ class TechnicalAnalysisService {
         multiTriggers: [],
         codeSmells: [],
         recommendations: [],
+        // Métricas calculadas desde datos reales
+        averageClassSize: 0,
+        averageApiVersion: 0,
       };
 
       // Analyze classes
@@ -102,6 +144,25 @@ class TechnicalAnalysisService {
             });
           }
         });
+      }
+
+      // Calcular métricas adicionales
+      if (classResponse.records && classResponse.records.length > 0) {
+        const totalLines = classResponse.records.reduce(
+          (sum, cls) => sum + (cls.LengthWithoutComments || 0),
+          0
+        );
+        const totalApiVersion = classResponse.records.reduce(
+          (sum, cls) => sum + (parseFloat(cls.ApiVersion) || 0),
+          0
+        );
+
+        codeQuality.averageClassSize = Math.round(
+          totalLines / classResponse.records.length
+        );
+        codeQuality.averageApiVersion =
+          Math.round((totalApiVersion / classResponse.records.length) * 10) /
+          10;
       }
 
       // Generate recommendations
@@ -173,89 +234,49 @@ class TechnicalAnalysisService {
       const allClasses = classResponse.records;
       const totalClasses = allClasses.length;
 
-      // Mejorar cálculo de cobertura - MÁS REALISTA
-      // 1. Clases con código significativo (más de 100 líneas)
-      const classesWithSignificantCode = allClasses.filter(
-        (cls) => cls.LengthWithoutComments > 100
-      );
-
-      // 2. Clases con código mínimo (más de 10 líneas)
-      const classesWithMinimalCode = allClasses.filter(
-        (cls) => cls.LengthWithoutComments > 10
-      );
-
-      // 3. Clases legacy (API version antigua)
-      const legacyClasses = allClasses.filter((cls) => cls.ApiVersion < 50);
-
-      // 4. Calcular cobertura realista basada en patrones
-      let estimatedCoverage = 0;
-
-      if (classesWithSignificantCode.length > 0) {
-        // Las clases con código significativo tienen mayor probabilidad de tener tests
-        const significantCodeCoverage = Math.min(
-          80,
-          (classesWithSignificantCode.length / totalClasses) * 100
-        );
-
-        // Las clases con código mínimo tienen cobertura media
-        const minimalCodeCoverage = Math.min(
-          60,
-          (classesWithMinimalCode.length / totalClasses) * 100
-        );
-
-        // Las clases legacy tienen menor cobertura
-        const legacyCoverage = Math.min(
-          40,
-          (legacyClasses.length / totalClasses) * 100
-        );
-
-        // Cálculo ponderado
-        estimatedCoverage =
-          significantCodeCoverage * 0.5 +
-          minimalCodeCoverage * 0.3 +
-          legacyCoverage * 0.2;
-      } else {
-        // Fallback para orgs pequeñas
-        estimatedCoverage = Math.min(
-          70,
-          (classesWithMinimalCode.length / totalClasses) * 100
-        );
-      }
-
-      // Limitar cobertura máxima a 85% para ser realista
-      const realisticCoverage = Math.min(85, Math.max(0, estimatedCoverage));
-
-      // Si no hay clases significativas, usar un cálculo más realista
-      if (realisticCoverage === 0 && totalClasses > 0) {
-        // Basado en el número de clases, generar cobertura realista
-        const baseCoverage = Math.min(
-          75,
-          Math.max(20, (totalClasses / 50) * 100)
-        );
-        const randomVariation = (Math.random() - 0.5) * 20; // ±10%
-        realisticCoverage = Math.max(
-          0,
-          Math.min(85, baseCoverage + randomVariation)
-        );
-      }
+      // SOLO DATOS REALES - NO SIMULADOS
+      // En Developer Edition no podemos obtener cobertura real
+      // Solo podemos contar clases y hacer análisis básico
 
       // Identificar clases sin cobertura (clases con código pero sin tests)
-      const classesWithoutCoverage = classesWithSignificantCode
+      const classesWithoutCoverage = allClasses
         .filter((cls) => cls.LengthWithoutComments > 200) // Clases grandes sin tests
         .slice(0, 10) // Limitar a 10 para no sobrecargar
         .map((cls) => cls.Name);
 
       // Identificar tests lentos (clases con mucho código)
-      const slowTests = classesWithSignificantCode
+      const slowTests = allClasses
         .filter((cls) => cls.LengthWithoutComments > 500) // Clases muy grandes
         .slice(0, 5) // Limitar a 5
         .map((cls) => cls.Name);
 
+      // COBERTURA REAL - NO SIMULADA
+      // En Developer Edition no podemos obtener cobertura real
+      // Solo podemos contar clases y hacer análisis básico
+      const overallCoverage = 0; // No disponible en Developer Edition
+
       return {
-        overallCoverage: Math.round(realisticCoverage),
+        overallCoverage,
         classesWithoutCoverage,
         slowTests,
-        recommendations: [], // Agregar recommendations vacío para compatibilidad
+        recommendations: [
+          {
+            priority: 'high',
+            category: 'testCoverage',
+            title: 'Test Coverage Not Available',
+            description:
+              'Test coverage data is not available in Developer Edition. Use Salesforce CLI or Tooling API in Production/Sandbox orgs.',
+            effort: 0,
+            impact: 'medium',
+            actionItems: [
+              'Use Salesforce CLI to run test coverage',
+              'Deploy to Sandbox for detailed coverage analysis',
+              'Use Tooling API in Production orgs',
+            ],
+          },
+        ],
+        // SOLO DATOS REALES - MÉTRICAS POSIBLES
+        classesNeedingTests: classesWithoutCoverage.length,
       };
     } catch (error) {
       throw new Error(`Test coverage analysis failed: ${error.message}`);
@@ -264,6 +285,9 @@ class TechnicalAnalysisService {
 
   async getPerformanceAnalysis() {
     try {
+      // Detectar tipo de org
+      this.orgType = this.detectOrgType();
+
       // Get current limits
       const limits = await makeSalesforceRequest(
         `${this.salesforceConfig.instanceUrl}/services/data/v${this.salesforceConfig.apiVersion}/limits`
@@ -337,13 +361,13 @@ class TechnicalAnalysisService {
           },
           soqlQueries: {
             used: limits.DailySOQLQueries?.Used || 0,
-            limit: limits.DailySOQLQueries?.Max || 100000,
+            limit: 100, // Límite correcto según Salesforce: 100 consultas por transacción
             percentage: 0,
             status: 'good',
           },
           dmlStatements: {
             used: limits.DailyDMLStatements?.Used || 0,
-            limit: limits.DailyDMLStatements?.Max || 250000,
+            limit: 150, // Límite correcto según Salesforce: 150 operaciones DML por transacción
             percentage: 0,
             status: 'good',
           },
@@ -356,6 +380,43 @@ class TechnicalAnalysisService {
           heapSize: {
             used: limits.HeapSize?.Used || 0,
             limit: limits.HeapSize?.Max || 6000000,
+            percentage: 0,
+            status: 'good',
+          },
+          // Governor Limits adicionales
+          emailInvocations: {
+            used: limits.DailyEmailInvocations?.Used || 0,
+            limit: 10, // Límite según Salesforce: 10 emails por transacción
+            percentage: 0,
+            status: 'good',
+          },
+          callouts: {
+            used: limits.DailyCallouts?.Used || 0,
+            limit: 100, // Límite según Salesforce: 100 callouts por transacción
+            percentage: 0,
+            status: 'good',
+          },
+          mobilePushApex: {
+            used: limits.DailyMobilePushApexCalls?.Used || 0,
+            limit: 10, // Límite según Salesforce: 10 push notifications por transacción
+            percentage: 0,
+            status: 'good',
+          },
+          soslQueries: {
+            used: limits.DailySOSLQueries?.Used || 0,
+            limit: 20, // Límite según Salesforce: 20 consultas SOSL por transacción
+            percentage: 0,
+            status: 'good',
+          },
+          aggregateQueries: {
+            used: limits.DailyAggregateQueries?.Used || 0,
+            limit: 300, // Límite según Salesforce: 300 consultas agregadas por transacción
+            percentage: 0,
+            status: 'good',
+          },
+          dmlRows: {
+            used: limits.DailyDMLRows?.Used || 0,
+            limit: 10000, // Límite según Salesforce: 10,000 filas DML por transacción
             percentage: 0,
             status: 'good',
           },
@@ -393,13 +454,9 @@ class TechnicalAnalysisService {
       Object.keys(performance.governorLimits).forEach((key) => {
         const limit = performance.governorLimits[key];
 
-        // Si no hay datos de uso, generar datos realistas basados en la actividad de la org
-        if (limit.used === 0) {
-          // Generar uso realista basado en el tamaño de la org
-          const orgSize = 1000; // Basado en las clases y datos que vimos
-          const randomFactor = Math.random() * 0.3 + 0.1; // Entre 10% y 40%
-          limit.used = Math.floor(limit.limit * randomFactor);
-        }
+        // SOLO DATOS REALES - NO SIMULADOS
+        // Si no hay datos de uso, mantener en 0
+        // Los datos reales solo están disponibles en Production/Sandbox
 
         limit.percentage = Number(
           ((limit.used / limit.limit) * 100).toFixed(3)
@@ -462,7 +519,11 @@ class TechnicalAnalysisService {
         }
       });
 
-      return performance;
+      return {
+        ...performance,
+        orgType: this.orgType,
+        orgTypeDescription: this.getOrgTypeDescription(this.orgType),
+      };
     } catch (error) {
       throw new Error(`Performance analysis failed: ${error.message}`);
     }
@@ -470,11 +531,14 @@ class TechnicalAnalysisService {
 
   async getArchitectureAnalysis() {
     try {
-      // Custom objects analysis - usar consulta simple que funciona
+      // Custom objects analysis - query que puede fallar en Developer Edition
       const customObjectsQuery = `
-        SELECT Id, DeveloperName, QualifiedApiName
+        SELECT Id, DeveloperName, QualifiedApiName, IsCustom, IsCustomizable, IsQueryable, Label
         FROM EntityDefinition
-        LIMIT 1000
+        WHERE IsCustom = true
+        AND QualifiedApiName LIKE '%__c'
+        ORDER BY QualifiedApiName
+        LIMIT 100
       `;
 
       // Custom fields analysis - usar consulta con filtro específico
@@ -528,7 +592,14 @@ class TechnicalAnalysisService {
           `${this.salesforceConfig.instanceUrl}/services/data/v${
             this.salesforceConfig.apiVersion
           }/query?q=${encodeURIComponent(customObjectsQuery)}`
-        ),
+        ).catch((error) => {
+          console.log('❌ ERROR en query de objetos custom:', error.message);
+          return {
+            error: error.message,
+            records: [],
+            success: false,
+          };
+        }),
         makeSalesforceRequest(
           `${this.salesforceConfig.instanceUrl}/services/data/v${
             this.salesforceConfig.apiVersion
@@ -556,8 +627,64 @@ class TechnicalAnalysisService {
         ),
       ]);
 
+      // Debug: Log custom objects for verification
+      console.log('🔍 DEBUG - Custom Objects Query Results:');
+      console.log(
+        `   - Total records: ${customObjectsResponse.records?.length || 0}`
+      );
+      console.log(
+        `   - Response status: ${customObjectsResponse.success || 'N/A'}`
+      );
+      console.log(
+        `   - Response error: ${customObjectsResponse.error || 'None'}`
+      );
+
+      // Detectar si es un error de Tooling API
+      if (
+        customObjectsResponse.error &&
+        (customObjectsResponse.error.includes('Tooling API') ||
+          customObjectsResponse.error.includes('EntityDefinition') ||
+          customObjectsResponse.error.includes('not supported'))
+      ) {
+        console.log(
+          '   - ❌ ERROR: Necesitas Tooling API, que no es compatible en Developer Edition'
+        );
+        console.log(
+          '   - 💡 SOLUCIÓN: Usar Sandbox o Production para acceso completo a metadata'
+        );
+      }
+
+      if (
+        customObjectsResponse.records &&
+        customObjectsResponse.records.length > 0
+      ) {
+        console.log('   - ALL objects found:');
+        customObjectsResponse.records.forEach((obj, index) => {
+          console.log(
+            `     ${index + 1}. ${obj.QualifiedApiName} (Label: ${
+              obj.Label
+            }, Custom: ${obj.IsCustom}, Queryable: ${obj.IsQueryable})`
+          );
+        });
+      } else {
+        console.log('   - No objects found - INVESTIGATING...');
+        console.log(
+          '   - Query used: SELECT Id, DeveloperName, QualifiedApiName, IsCustom, IsCustomizable, IsQueryable, Label'
+        );
+        console.log('   - FROM EntityDefinition (no filters)');
+      }
+
+      // Detectar si hay limitaciones de Developer Edition
+      const hasToolingAPILimitation =
+        customObjectsResponse.error &&
+        (customObjectsResponse.error.includes('Tooling API') ||
+          customObjectsResponse.error.includes('EntityDefinition') ||
+          customObjectsResponse.error.includes('not supported'));
+
       const architecture = {
-        customObjects: customObjectsResponse.records?.length || 0,
+        customObjects: hasToolingAPILimitation
+          ? 'N/A - Necesita Tooling API'
+          : customObjectsResponse.records?.length || 0,
         customFields: fieldsResponse.records?.length || 0,
         activeFlows: automationResponse.records?.length || 0,
         connectedApps: connectedAppsResponse.records?.length || 0,
@@ -565,7 +692,25 @@ class TechnicalAnalysisService {
           permissionSetsResponse.records?.[0]?.permissionSetCount || 0,
         profiles: profilesResponse.records?.[0]?.profileCount || 0,
         storageUsed: 0,
-        recommendations: [],
+        recommendations: hasToolingAPILimitation
+          ? [
+              {
+                priority: 'high',
+                category: 'architecture',
+                title: 'Tooling API Limitación',
+                description:
+                  'Necesitas Tooling API para acceder a metadata completa, que no es compatible en Developer Edition',
+                effort: 0,
+                impact: 'medium',
+                actionItems: [
+                  'Usar Sandbox org para acceso completo a metadata',
+                  'Usar Production org para análisis completo',
+                  'Considerar Salesforce CLI para metadata en Developer Edition',
+                ],
+              },
+            ]
+          : [],
+        toolingAPILimitation: hasToolingAPILimitation,
       };
 
       // Calculate storage usage from limits

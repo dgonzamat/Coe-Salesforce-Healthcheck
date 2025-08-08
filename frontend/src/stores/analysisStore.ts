@@ -1,5 +1,6 @@
 // Analysis Store with Zustand
 import { create } from 'zustand';
+import { TechnicalData, FinancialData, AnalysisResults } from '../types/analysis';
 
 // Types
 export interface SalesforceConnection {
@@ -22,74 +23,9 @@ export interface ConnectionState {
   connectionDate: string;
 }
 
-export interface TechnicalData {
-  governorLimits: {
-    soqlQueries: { used: number; limit: number; percentage: number };
-    dmlStatements: { used: number; limit: number; percentage: number };
-    cpuTime: { used: number; limit: number; percentage: number };
-    heapSize: { used: number; limit: number; percentage: number };
-  };
-  codeQuality: {
-    totalClasses: number;
-    largeClasses: number;
-    legacyCode: number;
-    multiTriggers: number;
-    testCoverage: { overallCoverage: number; classesWithoutCoverage: string[]; slowTests: any[] };
-    complexityScore: number;
-  };
-  performance: {
-    customObjects: number;
-    customFields: number;
-    activeFlows: number;
-    validationRules: number;
-    storageUsed: number;
-  };
-  security: {
-    inactiveUsers: number;
-    passwordNeverChanged: number;
-    adminUsers: number;
-    failedLogins: number;
-  };
-}
 
-export interface FinancialData {
-  licenses: {
-    totalLicenses: number;
-    usedLicenses: number;
-    unusedLicenses: number;
-    monthlyWaste: number;
-    yearlyWaste: number;
-  };
-  storage: {
-    dataUsed: number;
-    fileUsed: number;
-    monthlyOverage: number;
-    yearlyOverage: number;
-    growthTrends: { [key: string]: number };
-  };
-  technicalDebt: {
-    totalHours: number;
-    hourlyRate: number;
-    totalCost: number;
-    monthlyInterest: number;
-  };
-  risks: {
-    governorIncidentRisk: number;
-    deploymentDelays: number;
-    maintenanceGrowth: number;
-  };
-}
 
-export interface AnalysisResults {
-  technical: TechnicalData;
-  financial: FinancialData;
-  summary: {
-    totalClasses: number;
-    totalTriggers: number;
-    avgCodeCoverage: number;
-    overallScore: number;
-  };
-}
+
 
 export interface AnalysisState {
   isRunning: boolean;
@@ -145,14 +81,26 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
           dmlStatements: { used: 0, limit: 0, percentage: 0 },
           cpuTime: { used: 0, limit: 0, percentage: 0 },
           heapSize: { used: 0, limit: 0, percentage: 0 },
+          emailInvocations: { used: 0, limit: 0, percentage: 0 },
+          callouts: { used: 0, limit: 0, percentage: 0 },
+          mobilePushApex: { used: 0, limit: 0, percentage: 0 },
+          soslQueries: { used: 0, limit: 0, percentage: 0 },
+          aggregateQueries: { used: 0, limit: 0, percentage: 0 },
+          dmlRows: { used: 0, limit: 0, percentage: 0 },
         },
         codeQuality: {
           totalClasses: 0,
           largeClasses: 0,
           legacyCode: 0,
           multiTriggers: 0,
-          testCoverage: { overallCoverage: 0, classesWithoutCoverage: [], slowTests: [] },
+          testCoverage: { 
+            overallCoverage: 0, 
+            classesWithoutCoverage: [], 
+            slowTests: []
+          },
           complexityScore: 0,
+          averageClassSize: 0,
+          averageApiVersion: 0,
         },
         performance: {
           customObjects: 0,
@@ -286,14 +234,15 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
     setAnalysisRunning(true);
     
     try {
-      console.log('📡 Haciendo fetch a /api/real-data...');
-      const response = await fetch('/api/real-data');
+      console.log('📡 Haciendo fetch a /api/unified-data...');
+      const response = await fetch('/api/unified-data');
       const data = await response.json();
       
       console.log('📊 Datos de análisis recibidos:', data);
       
       if (data.success) {
         console.log('✅ Análisis completado exitosamente');
+        // Los datos ya vienen en la estructura correcta, no necesitan mapeo
         setAnalysisResults(data.data);
       } else {
         console.error('❌ Error en análisis:', data.error);

@@ -1,4 +1,5 @@
 const { makeSalesforceRequest } = require('../utils/salesforceClient');
+
 const ScoreCalculator = require('../utils/scoreCalculator');
 
 class FinancialAnalysisService {

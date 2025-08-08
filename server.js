@@ -169,7 +169,123 @@ app.get('/api/organization-analysis', async (req, res) => {
   }
 });
 
-// Endpoint para datos REALES únicamente (sin simulados)
+// Endpoint UNIFICADO para todos los datos (SOLUCIÓN DE FONDO)
+app.get('/api/unified-data', async (req, res) => {
+  try {
+    if (!SALESFORCE_CONFIG.accessToken || !SALESFORCE_CONFIG.instanceUrl) {
+      return res.status(500).json({
+        success: false,
+        error:
+          'Configuración de Salesforce no válida. Verifica las variables de entorno.',
+      });
+    }
+
+    // Obtener TODOS los datos en una sola llamada
+    const [
+      technicalAnalysis,
+      financialAnalysis,
+      securityAnalysis,
+      storageAnalysis,
+    ] = await Promise.all([
+      technicalService.getTechnicalHealthScore(),
+      financialService.getFinancialHealthScore(),
+      technicalService.getSecurityAnalysis(),
+      financialService.getStorageAnalysis(),
+    ]);
+
+    // ESTRUCTURA UNIFICADA Y CONSISTENTE
+    const unifiedData = {
+      success: true,
+      data: {
+        technical: {
+          governorLimits: {
+            soqlQueries: technicalAnalysis.details.performance.governorLimits.soqlQueries,
+            dmlStatements: technicalAnalysis.details.performance.governorLimits.dmlStatements,
+            cpuTime: technicalAnalysis.details.performance.governorLimits.cpuTime,
+            heapSize: technicalAnalysis.details.performance.governorLimits.heapSize,
+            emailInvocations: technicalAnalysis.details.performance.governorLimits.emailInvocations,
+            callouts: technicalAnalysis.details.performance.governorLimits.callouts,
+            mobilePushApex: technicalAnalysis.details.performance.governorLimits.mobilePushApex,
+            soslQueries: technicalAnalysis.details.performance.governorLimits.soslQueries,
+            aggregateQueries: technicalAnalysis.details.performance.governorLimits.aggregateQueries,
+            dmlRows: technicalAnalysis.details.performance.governorLimits.dmlRows,
+          },
+          codeQuality: {
+            totalClasses: technicalAnalysis.details.codeQuality.totalClasses,
+            largeClasses: technicalAnalysis.details.codeQuality.largeClasses.length,
+            legacyCode: technicalAnalysis.details.codeQuality.legacyClasses.length,
+            multiTriggers: technicalAnalysis.details.codeQuality.multiTriggers.length,
+            testCoverage: {
+              overallCoverage: technicalAnalysis.details.codeQuality.testCoverage,
+              classesWithoutCoverage: technicalAnalysis.details.testCoverage?.classesWithoutCoverage || [],
+              slowTests: technicalAnalysis.details.testCoverage?.slowTests || [],
+            },
+            complexityScore: technicalAnalysis.details.codeQuality.complexityScore || 0,
+            averageClassSize: technicalAnalysis.details.codeQuality.averageClassSize,
+            averageApiVersion: technicalAnalysis.details.codeQuality.averageApiVersion,
+          },
+          performance: {
+            customObjects: technicalAnalysis.details.architecture?.customObjects || 0,
+            customFields: technicalAnalysis.details.architecture?.customFields || 0,
+            activeFlows: technicalAnalysis.details.architecture?.activeFlows || 0,
+            validationRules: 0, // No disponible sin Tooling API
+            storageUsed: technicalAnalysis.details.performance?.storageUsed || 0,
+          },
+          security: {
+            inactiveUsers: securityAnalysis.inactiveUsers || 0,
+            passwordNeverChanged: securityAnalysis.passwordNeverChanged || 0,
+            adminUsers: securityAnalysis.adminUsers || 0,
+            failedLogins: securityAnalysis.failedLogins || 0,
+          },
+        },
+        financial: {
+          licenses: {
+            totalLicenses: financialAnalysis.details.licenseAnalysis.totalLicenses,
+            usedLicenses: financialAnalysis.details.licenseAnalysis.usedLicenses,
+            unusedLicenses: financialAnalysis.details.licenseAnalysis.unusedLicenses,
+            monthlyWaste: financialAnalysis.details.licenseAnalysis.monthlyWaste,
+            yearlyWaste: financialAnalysis.details.licenseAnalysis.yearlyWaste,
+          },
+          storage: {
+            dataUsed: storageAnalysis.dataStorage.used || 0,
+            fileUsed: storageAnalysis.fileStorage.used || 0,
+            monthlyOverage: storageAnalysis.monthlyOverage || 0,
+            yearlyOverage: storageAnalysis.yearlyOverage || 0,
+            growthTrends: storageAnalysis.growthTrends || {},
+          },
+          technicalDebt: {
+            totalHours: financialAnalysis.details.technicalDebt?.totalHours || 0,
+            hourlyRate: financialAnalysis.details.technicalDebt?.hourlyRate || 0,
+            totalCost: financialAnalysis.details.technicalDebt?.totalCost || 0,
+            monthlyInterest: financialAnalysis.details.technicalDebt?.monthlyInterest || 0,
+          },
+          risks: {
+            governorIncidentRisk: financialAnalysis.details.operationalCosts?.governorIncidentRisk || 0,
+            deploymentDelays: 0, // No disponible sin Tooling API
+            maintenanceGrowth: 0, // No disponible sin Tooling API
+          },
+        },
+        summary: {
+          totalClasses: technicalAnalysis.details.codeQuality.totalClasses,
+          totalTriggers: technicalAnalysis.details.codeQuality.totalTriggers,
+          avgCodeCoverage: technicalAnalysis.details.codeQuality.testCoverage,
+          overallScore: Math.round(
+            (technicalAnalysis.overallScore + financialAnalysis.overallScore) / 2
+          ),
+        },
+      },
+    };
+
+    res.json(unifiedData);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: `Error obteniendo datos unificados: ${error.message}`,
+    });
+  }
+});
+
+// Endpoint para datos REALES únicamente (sin simulados) - MANTENER PARA COMPATIBILIDAD
 app.get('/api/real-data', async (req, res) => {
   try {
     if (!SALESFORCE_CONFIG.accessToken || !SALESFORCE_CONFIG.instanceUrl) {

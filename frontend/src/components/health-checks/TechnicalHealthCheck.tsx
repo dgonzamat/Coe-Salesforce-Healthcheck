@@ -1,5 +1,6 @@
 import ReactApexChart from 'react-apexcharts';
 import React from 'react';
+import { TechnicalData } from '../../types/analysis';
 import {
   Grid,
   Card,
@@ -33,35 +34,7 @@ import {
   Assessment as AssessmentIcon
 } from '@mui/icons-material';
 
-interface TechnicalData {
-  governorLimits: {
-    soqlQueries: { used: number; limit: number; percentage: number };
-    dmlStatements: { used: number; limit: number; percentage: number };
-    cpuTime: { used: number; limit: number; percentage: number };
-    heapSize: { used: number; limit: number; percentage: number };
-  };
-  codeQuality: {
-    totalClasses: number;
-    largeClasses: number;
-    legacyCode: number;
-    multiTriggers: number;
-    testCoverage: { overallCoverage: number; classesWithoutCoverage: string[]; slowTests: any[] };
-    complexityScore: number;
-  };
-  performance: {
-    customObjects: number;
-    customFields: number;
-    activeFlows: number;
-    validationRules: number;
-    storageUsed: number;
-  };
-  security: {
-    inactiveUsers: number;
-    passwordNeverChanged: number;
-    adminUsers: number;
-    failedLogins: number;
-  };
-}
+
 
 interface TechnicalHealthCheckProps {
   data?: TechnicalData;
@@ -70,7 +43,7 @@ interface TechnicalHealthCheckProps {
 }
 
 const getRiskLevel = (percentage: number) => {
-  if (percentage >= 80) return { level: 'Crítico', color: 'error' as const, description: 'Riesgo alto de límites de gobernador' };
+  if (percentage >= 80) return { level: 'Crítico', color: 'error' as const, description: 'Riesgo alto de Governor Limits' };
   if (percentage >= 70) return { level: 'Alto', color: 'warning' as const, description: 'Uso elevado, monitorear de cerca' };
   if (percentage >= 50) return { level: 'Medio', color: 'info' as const, description: 'Uso moderado, atención normal' };
   return { level: 'Bajo', color: 'success' as const, description: 'Uso saludable, sin preocupaciones' };
@@ -78,12 +51,18 @@ const getRiskLevel = (percentage: number) => {
 
 const getLimitDescription = (limitName: string) => {
   const descriptions = {
-    soqlQueries: 'Consultas SOQL ejecutadas hoy. Límite diario de 15,000 consultas.',
-    dmlStatements: 'Operaciones DML (INSERT, UPDATE, DELETE) ejecutadas hoy. Límite diario de 250,000 operaciones.',
+    soqlQueries: 'Consultas SOQL ejecutadas hoy. Límite de 100 consultas por transacción.',
+    dmlStatements: 'Operaciones DML (INSERT, UPDATE, DELETE) ejecutadas hoy. Límite de 150 operaciones por transacción.',
     cpuTime: 'Tiempo de CPU consumido por código Apex. Límite de 10,000ms por transacción.',
-    heapSize: 'Memoria utilizada por variables y objetos. Límite de 6MB por transacción.'
+    heapSize: 'Memoria utilizada por variables y objetos. Límite de 6MB por transacción.',
+    emailInvocations: 'Emails enviados por código Apex. Límite de 10 emails por transacción.',
+    callouts: 'Llamadas HTTP externas realizadas. Límite de 100 callouts por transacción.',
+    mobilePushApex: 'Notificaciones push enviadas. Límite de 10 notificaciones por transacción.',
+    soslQueries: 'Consultas SOSL de búsqueda de texto. Límite de 20 consultas por transacción.',
+    aggregateQueries: 'Consultas agregadas (GROUP BY, COUNT, etc.). Límite de 300 consultas por transacción.',
+    dmlRows: 'Filas modificadas por operaciones DML. Límite de 10,000 filas por transacción.'
   };
-  return descriptions[limitName as keyof typeof descriptions] || 'Métrica de límite de gobernador';
+  return descriptions[limitName as keyof typeof descriptions] || 'Métrica de Governor Limit';
 };
 
 const LoadingSkeleton = () => (
@@ -118,34 +97,42 @@ export const TechnicalHealthCheck: React.FC<TechnicalHealthCheckProps> = ({
     return <LoadingSkeleton />;
   }
 
-  // Siempre mostrar datos, incluso si hasData es false
+  // Usar datos reales o valores por defecto mínimos
   const displayData = data || {
     governorLimits: {
-      soqlQueries: { used: 0, limit: 15000, percentage: 0 },
-      dmlStatements: { used: 0, limit: 250000, percentage: 0 },
-      cpuTime: { used: 0, limit: 250000, percentage: 0 },
-      heapSize: { used: 0, limit: 6, percentage: 0 }
+      soqlQueries: { used: 0, limit: 100, percentage: 0 },
+      dmlStatements: { used: 0, limit: 150, percentage: 0 },
+      cpuTime: { used: 0, limit: 10000, percentage: 0 },
+      heapSize: { used: 0, limit: 6000000, percentage: 0 },
+      emailInvocations: { used: 0, limit: 10, percentage: 0 },
+      callouts: { used: 0, limit: 100, percentage: 0 },
+      mobilePushApex: { used: 0, limit: 10, percentage: 0 },
+      soslQueries: { used: 0, limit: 20, percentage: 0 },
+      aggregateQueries: { used: 0, limit: 300, percentage: 0 },
+      dmlRows: { used: 0, limit: 10000, percentage: 0 }
     },
     codeQuality: {
-      totalClasses: 200,
+      totalClasses: 0,
       largeClasses: 0,
       legacyCode: 0,
-      multiTriggers: 7,
+      multiTriggers: 0,
       testCoverage: { overallCoverage: 0, classesWithoutCoverage: [], slowTests: [] },
-      complexityScore: 4533
+      complexityScore: 0,
+      averageClassSize: 0,
+      averageApiVersion: 0
     },
     performance: {
       customObjects: 0,
       customFields: 0,
-      activeFlows: 85,
-      validationRules: 220,
-      storageUsed: 0.0185546875
+      activeFlows: 0,
+      validationRules: 0,
+      storageUsed: 0
     },
     security: {
-      inactiveUsers: 27,
-      passwordNeverChanged: 28,
-      adminUsers: 4,
-      failedLogins: 31
+      inactiveUsers: 0,
+      passwordNeverChanged: 0,
+      adminUsers: 0,
+      failedLogins: 0
     }
   };
   
@@ -158,27 +145,36 @@ export const TechnicalHealthCheck: React.FC<TechnicalHealthCheckProps> = ({
 };
 
 const TechnicalHealthCheckContent: React.FC<{ data: TechnicalData }> = ({ data }) => {
+  // Mostrar información del tipo de org (comentado temporalmente)
+  // const orgType = data?.orgType || 'unknown';
+  // const orgTypeDescription = data?.orgTypeDescription || 'Tipo de organización no disponible';
+  
   // Validar y proporcionar valores por defecto para governorLimits
   const governorLimits = data?.governorLimits || {};
-  const defaultLimit = { used: 0, limit: 100000, percentage: 0 };
   
   const limits = {
-    soqlQueries: governorLimits.soqlQueries || defaultLimit,
-    dmlStatements: governorLimits.dmlStatements || defaultLimit,
-    cpuTime: governorLimits.cpuTime || defaultLimit,
-    heapSize: governorLimits.heapSize || defaultLimit
+    soqlQueries: governorLimits.soqlQueries || { used: 0, limit: 100, percentage: 0 },
+    dmlStatements: governorLimits.dmlStatements || { used: 0, limit: 150, percentage: 0 },
+    cpuTime: governorLimits.cpuTime || { used: 0, limit: 10000, percentage: 0 },
+    heapSize: governorLimits.heapSize || { used: 0, limit: 6000000, percentage: 0 },
+    emailInvocations: governorLimits.emailInvocations || { used: 0, limit: 10, percentage: 0 },
+    callouts: governorLimits.callouts || { used: 0, limit: 100, percentage: 0 },
+    mobilePushApex: governorLimits.mobilePushApex || { used: 0, limit: 10, percentage: 0 },
+    soslQueries: governorLimits.soslQueries || { used: 0, limit: 20, percentage: 0 },
+    aggregateQueries: governorLimits.aggregateQueries || { used: 0, limit: 300, percentage: 0 },
+    dmlRows: governorLimits.dmlRows || { used: 0, limit: 10000, percentage: 0 }
   };
 
   // Validar y proporcionar valores por defecto para codeQuality
   const codeQuality = data?.codeQuality || {};
-  const defaultCodeQuality = {
-    totalClasses: 0,
-    largeClasses: 0,
-    legacyCode: 0,
-    multiTriggers: 0,
-    testCoverage: { overallCoverage: 0, classesWithoutCoverage: [], slowTests: [] },
-    complexityScore: 0
-  };
+  // const defaultCodeQuality = {
+  //   totalClasses: 0,
+  //   largeClasses: 0,
+  //   legacyCode: 0,
+  //   multiTriggers: 0,
+  //   testCoverage: { overallCoverage: 0, classesWithoutCoverage: [], slowTests: [] },
+  //   complexityScore: 0
+  // };
 
   const safeCodeQuality = {
     totalClasses: codeQuality.totalClasses || 0,
@@ -190,7 +186,9 @@ const TechnicalHealthCheckContent: React.FC<{ data: TechnicalData }> = ({ data }
       classesWithoutCoverage: codeQuality.testCoverage?.classesWithoutCoverage || [],
       slowTests: codeQuality.testCoverage?.slowTests || []
     },
-    complexityScore: codeQuality.complexityScore || 0
+    complexityScore: codeQuality.complexityScore || 0,
+    averageClassSize: codeQuality.averageClassSize || 0,
+    averageApiVersion: codeQuality.averageApiVersion || 0
   };
 
   return (
@@ -202,14 +200,22 @@ const TechnicalHealthCheckContent: React.FC<{ data: TechnicalData }> = ({ data }
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
               <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center' }}>
                 <SpeedIcon sx={{ mr: 1 }} />
-                Límites de Gobernador
+                Governor Limits
               </Typography>
-              <Tooltip title="Los límites de gobernador son restricciones de Salesforce que previenen el uso excesivo de recursos. Monitorear estos límites es crucial para evitar errores en producción.">
+              <Tooltip title="Governor Limits son restricciones de Salesforce que previenen el uso excesivo de recursos. Monitorear estos límites es crucial para evitar errores en producción.">
                 <IconButton size="small" sx={{ ml: 1 }}>
                   <HelpIcon fontSize="small" />
                 </IconButton>
               </Tooltip>
             </Box>
+            
+            {/* Información del tipo de org */}
+            <Box sx={{ mb: 2, p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
+              <Typography variant="body2" color="text.secondary">
+                <strong>Tipo de Organización:</strong> Developer Edition
+              </Typography>
+            </Box>
+            
             <Divider sx={{ mb: 2 }} />
             
             {Object.entries(limits).map(([key, limitData]) => {
@@ -307,6 +313,26 @@ const TechnicalHealthCheckContent: React.FC<{ data: TechnicalData }> = ({ data }
                   </Box>
                 </Tooltip>
               </Grid>
+              <Grid item xs={6}>
+                <Tooltip title="Tamaño promedio de las clases Apex. Valores altos indican clases complejas.">
+                  <Box>
+                    <Typography variant="body2" color="text.secondary">Promedio Líneas</Typography>
+                    <Typography variant="h6" color="info.main">
+                      {safeCodeQuality.averageClassSize !== undefined && safeCodeQuality.averageClassSize !== null ? safeCodeQuality.averageClassSize.toLocaleString() : 'N/A'}
+                    </Typography>
+                  </Box>
+                </Tooltip>
+              </Grid>
+              <Grid item xs={6}>
+                <Tooltip title="Versión promedio de API de las clases. Versiones bajas indican código legacy.">
+                  <Box>
+                    <Typography variant="body2" color="text.secondary">API Promedio</Typography>
+                    <Typography variant="h6" color="info.main">
+                      {safeCodeQuality.averageApiVersion !== undefined && safeCodeQuality.averageApiVersion !== null ? safeCodeQuality.averageApiVersion : 'N/A'}
+                    </Typography>
+                  </Box>
+                </Tooltip>
+              </Grid>
             </Grid>
             
             <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
@@ -353,11 +379,28 @@ const TechnicalHealthCheckContent: React.FC<{ data: TechnicalData }> = ({ data }
             />
             <List dense>
               <ListItem>
-                <ListItemText primary="Clases sin Cobertura" secondary={`${data.codeQuality.testCoverage.classesWithoutCoverage.length} clases`} />
+                <ListItemText 
+                  primary="Clases sin Cobertura" 
+                  secondary={`${data.codeQuality.testCoverage.classesWithoutCoverage.length} clases`} 
+                />
+                <Chip 
+                  label={data.codeQuality.testCoverage.classesWithoutCoverage.length > 5 ? 'Crítico' : 'Bajo'} 
+                  color={data.codeQuality.testCoverage.classesWithoutCoverage.length > 5 ? 'error' : 'success'}
+                  size="small"
+                />
               </ListItem>
               <ListItem>
-                <ListItemText primary="Pruebas Lentas" secondary={`${data.codeQuality.testCoverage.slowTests.length} pruebas > 5s`} />
+                <ListItemText 
+                  primary="Pruebas Lentas" 
+                  secondary={`${data.codeQuality.testCoverage.slowTests.length} pruebas > 5s`} 
+                />
+                <Chip 
+                  label={data.codeQuality.testCoverage.slowTests.length > 3 ? 'Alto' : 'Bajo'} 
+                  color={data.codeQuality.testCoverage.slowTests.length > 3 ? 'warning' : 'success'}
+                  size="small"
+                />
               </ListItem>
+
             </List>
           </CardContent>
         </Card>
